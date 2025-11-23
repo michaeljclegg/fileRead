@@ -24,7 +24,10 @@
           
           <!-- Upload View -->
           <div v-if="view === 'upload'" class="flex flex-col h-full space-y-6" key="upload">
-            <FolderSelect @filesSelected="handleFilesSelected" />
+            <FolderSelect 
+            @filesSelected="handleFilesSelected" 
+            :compact="uploadedFiles.length > 0"
+          />
             
             <div v-if="uploadedFiles.length > 0" class="flex-1 flex flex-col min-h-0 bg-slate-800/50 rounded-xl border border-slate-700 p-6 space-y-6">
               <div class="flex-1 overflow-hidden">

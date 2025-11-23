@@ -50,10 +50,10 @@ export const queryFileSearchStore = async (
     onChunk: (chunk: string) => void
 ) => {
     const config = useRuntimeConfig();
-    const apiKey = config.public.apiKey;
+    const apiKey = config.public.googleApiKey;
 
     if (!apiKey) {
-        throw new Error("API_KEY environment variable not found. Please ensure it is set.");
+        throw new Error("Google API Key not found. Please ensure NUXT_PUBLIC_GOOGLE_API_KEY is set in .env");
     }
     const ai = new GoogleGenAI({ apiKey });
 
