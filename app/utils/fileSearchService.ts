@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
-import { type FileUploadState, UploadStatus } from "../types/types";
+import { type FileUploadState, UploadStatus, type FileMetadata } from "../types/types";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Helper to convert File to a generative part.
 const fileToGenerativePart = (file: File) => {
@@ -42,6 +44,35 @@ const fileToGenerativePart = (file: File) => {
             reader.onerror = (error) => reject(error);
         }
     });
+};
+
+export const uploadFileToFirebase = async (file: File): Promise<FileMetadata> => {
+    const { $storage, $db } = useNuxtApp();
+    const storage = $storage as any;
+    const db = $db as any;
+
+    // 1. Upload to Storage
+    const path = `uploads/${Date.now()}_${file.name}`;
+    const fileRef = storageRef(storage, path);
+    await uploadBytes(fileRef, file);
+    const downloadUrl = await getDownloadURL(fileRef);
+
+    // 2. Save Metadata to Firestore
+    const metadata: FileMetadata = {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        storagePath: path,
+        downloadUrl: downloadUrl,
+        createdAt: Date.now() // Client-side timestamp for immediate UI use, Firestore will have serverTimestamp
+    };
+
+    const docRef = await addDoc(collection(db, "fileReading"), {
+        ...metadata,
+        createdAt: serverTimestamp()
+    });
+
+    return { ...metadata, id: docRef.id };
 };
 
 export const queryFileSearchStore = async (

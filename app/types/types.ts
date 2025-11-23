@@ -22,6 +22,10 @@ export interface FileMetadata {
     size?: number;
     type?: string;
     path?: string;
+    id?: string;
+    storagePath?: string;
+    downloadUrl?: string;
+    createdAt?: number;
 }
 
 export interface FileUploadState {
