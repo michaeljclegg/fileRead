@@ -1,6 +1,7 @@
-# Nuxt Minimal Starter
+# FILE READ - AN APP TO UPLOAD, QUERY AND ANALYZE TEXTS 
+AN IMPLAMENTATION OF GOOGLE FILE SEACH AI 
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+@ mICHAEL J. cLEGG 2025
 
 ## Setup
 
