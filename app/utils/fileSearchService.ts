@@ -1,49 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { type FileUploadState, UploadStatus, type FileMetadata } from "../types/types";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 
 // Helper to convert File to a generative part.
 const fileToGenerativePart = (file: File) => {
-    return new Promise<any>((resolve, reject) => {
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-
-        if (isPdf) {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                if (typeof reader.result !== 'string') {
-                    return reject('Failed to read file as data URL');
-                }
-                const parts = reader.result.split(',');
-                const base64Data = parts[1];
-
-                if (!base64Data) {
-                    return reject('Failed to extract base64 data from file');
-                }
-
-                resolve({
-                    inlineData: {
-                        data: base64Data,
-                        mimeType: file.type || 'application/pdf'
-                    }
-                });
-            };
-            reader.onerror = (error) => reject(error);
-        } else {
-            const reader = new FileReader();
-            reader.readAsText(file);
-            reader.onload = () => {
-                if (typeof reader.result !== 'string') {
-                    return reject('Failed to read file as text');
-                }
-                resolve({
-                    text: `\n\n--- START OF FILE ${file.name} ---\n${reader.result}\n--- END OF FILE ${file.name} ---\n`
-                });
-            };
-            reader.onerror = (error) => reject(error);
-        }
-    });
 };
 
 export const uploadFileToFirebase = async (
@@ -122,6 +83,44 @@ export const uploadFileToFirebase = async (
         );
     });
 };
+
+// add this function - start!
+export const fetchFilesFromFirestore = async (): Promise<FileUploadState[]> => {
+    const { $db } = useNuxtApp();
+    const db = $db as any;
+    const filesCollection = collection(db, "fileReading");
+
+    // Order by createdAt desc to show newest first
+    const q = query(filesCollection, orderBy("createdAt", "desc"));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            const metadata: FileMetadata = {
+                name: data.name,
+                size: data.size,
+                type: data.type,
+                storagePath: data.storagePath,
+                downloadUrl: data.downloadUrl,
+                createdAt: data.createdAt ? (data.createdAt.seconds * 1000) : Date.now(),
+                id: doc.id
+            };
+
+            return {
+                file: undefined, // No local file object
+                status: UploadStatus.SUCCESS, // Already uploaded
+                metadata: metadata,
+                progress: 100
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching files from Firestore:", error);
+        return [];
+    }
+};
+
+// add this function - end
 
 export const queryFileSearchStore = async (
     query: string,

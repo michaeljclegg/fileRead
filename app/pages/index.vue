@@ -92,8 +92,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { type FileUploadState, UploadStatus } from "../types/types";
+import {
+  fetchFilesFromFirestore,
+  uploadFileToFirebase,
+} from "../utils/fileSearchService";
 
 const view = ref<"upload" | "chat">("upload");
 const uploadedFiles = ref<FileUploadState[]>([]);
@@ -104,6 +108,11 @@ const processedCount = computed(
   () =>
     uploadedFiles.value.filter((f) => f.status === UploadStatus.SUCCESS).length
 );
+
+onMounted(async () => {
+  const files = await fetchFilesFromFirestore();
+  uploadedFiles.value = files;
+});
 
 const handleFilesSelected = (fileList: FileList) => {
   const newFiles: FileUploadState[] = Array.from(fileList).map((file) => ({
@@ -143,12 +152,20 @@ const handleProcess = async () => {
 
   // Simulate processing (in reality, we just mark them as ready for the AI service)
   for (let i = 0; i < total; i++) {
+    // Skip if already uploaded or no file object (loaded from Firestore)
+    if (
+      uploadedFiles.value[i].status === UploadStatus.SUCCESS ||
+      !uploadedFiles.value[i].file
+    ) {
+      continue;
+    }
+
     uploadedFiles.value[i].status = UploadStatus.UPLOADING;
 
     try {
       // Upload to Firebase
       const metadata = await uploadFileToFirebase(
-        uploadedFiles.value[i].file,
+        uploadedFiles.value[i].file!,
         (progress) => {
           uploadedFiles.value[i].progress = progress;
         }

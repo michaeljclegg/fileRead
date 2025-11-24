@@ -6,21 +6,34 @@
 
 ## Usage Guide
 
-### 1. Select a Folder
+### 1. Initial Load
 
-- Upon opening the application, the user is presented with a "Start by selecting a folder" screen.
-- Clicking the **Select Folder** button opens the system's file dialog.
-- The user selects a directory containing the files they wish to analyze.
+- Upon opening the application, previously uploaded files are **automatically loaded** from Firestore.
+- Files that were processed in previous sessions appear in the file list immediately.
+- This allows you to continue working with your document collection across sessions.
+
+### 2. Select a Folder
+
+- If starting fresh or adding more files, click the **Select Folder** button (red button).
+- The system's file dialog opens for directory selection.
+- Select a directory containing the files you wish to analyze.
 - **Note:** The application supports text-based files and PDFs.
 
-### 2. Review and Process
+### 3. Review and Manage Files
 
-- Once a folder is selected, the application lists all detected files.
-- The user can review the list to ensure the correct files are included.
-- Clicking the **Process Files** (or similar action button) initiates the upload and preparation phase.
-- **Note:** Files are securely uploaded to **Firebase Storage** for persistent access. Metadata (name, size, type) is stored in **Cloud Firestore** (specifically the `fileReading` collection). This allows the application to retain knowledge of your files across sessions.
+- Once files are selected or loaded, the application lists all detected files.
+- Each file shows its name, size, and current status.
+- **Remove Files:** Click the X button on any pending or failed file to remove it from the list.
+- **Duplicate Detection:** The system automatically checks if a file already exists in Firestore (by name and size) before uploading.
 
-### 3. Chat with Your Files
+### 4. Process Files
+
+- Clicking the **Process Files** button initiates the upload and preparation phase.
+- **Progress Tracking:** A real-time progress bar shows the upload status for each file (0-100%).
+- **Smart Upload:** Files already in Firestore are skipped automatically.
+- **Note:** Files are securely uploaded to **Firebase Storage** for persistent access. Metadata (name, size, type, download URL) is stored in **Cloud Firestore** (specifically the `fileReading` collection).
+
+### 5. Chat with Your Files
 
 - After processing is complete, the interface switches to a **Chat View**.
 - The user can type questions into the chat input field.
@@ -38,8 +51,14 @@
 
 - **Text Files:** Read as plain text.
 - **PDF Files:** Read as Data URLs (Base64 encoded).
-- **Firebase Storage:** The actual binary content of the files is uploaded to a secure bucket.
-- **Firestore:** A record is created for each file containing its metadata and a reference to its storage location.
+- **Firebase Storage:** The actual binary content of the files is uploaded to a secure bucket using `uploadBytesResumable` for progress tracking.
+- **Firestore:** A record is created for each file containing:
+  - File metadata (name, size, type)
+  - Storage path and download URL
+  - Creation timestamp
+- **Duplicate Prevention:** Before uploading, the system queries Firestore for existing files with matching name and size.
+- **Persistent Loading:** On application startup, all previously uploaded files are fetched from Firestore and displayed.
+- **Remote File Access:** Files can be queried from their download URLs when the local File object is not available.
 
 ### AI Integration
 

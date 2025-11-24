@@ -29,7 +29,7 @@ export interface FileMetadata {
 }
 
 export interface FileUploadState {
-    file: File;
+    file?: File;
     status: UploadStatus;
     metadata: FileMetadata;
     error?: string;
