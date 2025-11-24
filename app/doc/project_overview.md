@@ -2,7 +2,7 @@
 
 ## Purpose
 
-**Index Files AI** is a web application designed to allow users to interact with their local documents using Artificial Intelligence. The primary goal is to enable users to "chat" with a collection of files, asking questions and receiving answers based solely on the content of those documents. This is particularly useful for quickly extracting information from large sets of text files or PDFs without manually searching through them.
+**fileRead AI** is a web application designed to allow users to interact with their local documents using Artificial Intelligence. The primary goal is to enable users to "chat" with a collection of files, asking questions and receiving answers based solely on the content of those documents. This is particularly useful for quickly extracting information from large sets of text files or PDFs without manually searching through them.
 
 ## Usage Guide
 
@@ -17,8 +17,8 @@
 
 - Once a folder is selected, the application lists all detected files.
 - The user can review the list to ensure the correct files are included.
-- Clicking the **Process Files** (or similar action button) initiates the "upload" and preparation phase.
-- **Note:** In this local-first context, "uploading" refers to reading the file contents into the browser's memory to prepare them for the AI model. No files are permanently stored on an external server by this application logic itself, though content is sent to Google's Gemini API for processing during the chat.
+- Clicking the **Process Files** (or similar action button) initiates the upload and preparation phase.
+- **Note:** Files are securely uploaded to **Firebase Storage** for persistent access. Metadata (name, size, type) is stored in **Cloud Firestore** (specifically the `fileReading` collection). This allows the application to retain knowledge of your files across sessions.
 
 ### 3. Chat with Your Files
 
@@ -34,11 +34,12 @@
 - The application uses the HTML5 `webkitdirectory` attribute to allow directory selection.
 - It recursively identifies files within the selected folder.
 
-### File Processing
+### File Processing & Persistence
 
 - **Text Files:** Read as plain text.
-- **PDF Files:** Read as Data URLs (Base64 encoded) to be compatible with the AI model's multimodal capabilities.
-- The application simulates an "upload" progress bar to give user feedback while it reads these files into memory.
+- **PDF Files:** Read as Data URLs (Base64 encoded).
+- **Firebase Storage:** The actual binary content of the files is uploaded to a secure bucket.
+- **Firestore:** A record is created for each file containing its metadata and a reference to its storage location.
 
 ### AI Integration
 

@@ -54,6 +54,7 @@ export const uploadFileToFirebase = async (file: File): Promise<FileMetadata> =>
     // 1. Upload to Storage
     const path = `uploads/${Date.now()}_${file.name}`;
     const fileRef = storageRef(storage, path);
+    console.log(fileRef);
     await uploadBytes(fileRef, file);
     const downloadUrl = await getDownloadURL(fileRef);
 

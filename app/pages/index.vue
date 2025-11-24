@@ -27,12 +27,13 @@
               />
             </svg>
           </div>
-          <h1
+          <div
             class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-red-800"
           >
             Index Files AI
-          </h1>
+          </div>
         </div>
+        <div class="text-2xl font-bold text-slate-600">version 1.02</div>
       </header>
 
       <!-- Main Content -->
