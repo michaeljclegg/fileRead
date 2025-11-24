@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { type FileUploadState, UploadStatus, type FileMetadata } from "../types/types";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 
 // Helper to convert File to a generative part.
 const fileToGenerativePart = (file: File) => {
@@ -46,34 +46,81 @@ const fileToGenerativePart = (file: File) => {
     });
 };
 
-export const uploadFileToFirebase = async (file: File): Promise<FileMetadata> => {
+export const uploadFileToFirebase = async (
+    file: File,
+    onProgress?: (progress: number) => void
+): Promise<FileMetadata> => {
     const { $storage, $db } = useNuxtApp();
     const storage = $storage as any;
     const db = $db as any;
 
-    // 1. Upload to Storage
+    // 1. Check for duplicates in Firestore
+    const filesCollection = collection(db, "fileReading");
+    const q = query(
+        filesCollection,
+        where("name", "==", file.name),
+        where("size", "==", file.size)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+        console.log(`File ${file.name} already exists. Skipping upload.`);
+        const doc = querySnapshot.docs[0];
+        if (doc) {
+            const data = doc.data();
+            if (onProgress) onProgress(100);
+            return {
+                name: data.name,
+                size: data.size,
+                type: data.type,
+                storagePath: data.storagePath,
+                downloadUrl: data.downloadUrl,
+                createdAt: data.createdAt ? (data.createdAt.seconds * 1000) : Date.now(),
+                id: doc.id
+            } as FileMetadata;
+        }
+    }
+
+    // 2. Upload to Storage with Progress
     const path = `uploads/${Date.now()}_${file.name}`;
     const fileRef = storageRef(storage, path);
     console.log(fileRef);
-    await uploadBytes(fileRef, file);
-    const downloadUrl = await getDownloadURL(fileRef);
 
-    // 2. Save Metadata to Firestore
-    const metadata: FileMetadata = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        storagePath: path,
-        downloadUrl: downloadUrl,
-        createdAt: Date.now() // Client-side timestamp for immediate UI use, Firestore will have serverTimestamp
-    };
+    const uploadTask = uploadBytesResumable(fileRef, file);
 
-    const docRef = await addDoc(collection(db, "fileReading"), {
-        ...metadata,
-        createdAt: serverTimestamp()
+    return new Promise<FileMetadata>((resolve, reject) => {
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                if (onProgress) onProgress(progress);
+            },
+            (error) => {
+                reject(error);
+            },
+            async () => {
+                // Upload completed successfully, now we can get the download URL
+                const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+
+                // 3. Save Metadata to Firestore
+                const metadata: FileMetadata = {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    storagePath: path,
+                    downloadUrl: downloadUrl,
+                    createdAt: Date.now()
+                };
+
+                const docRef = await addDoc(filesCollection, {
+                    ...metadata,
+                    createdAt: serverTimestamp()
+                });
+
+                resolve({ ...metadata, id: docRef.id });
+            }
+        );
     });
-
-    return { ...metadata, id: docRef.id };
 };
 
 export const queryFileSearchStore = async (

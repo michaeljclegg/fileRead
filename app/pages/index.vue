@@ -55,7 +55,7 @@
               class="flex-1 flex flex-col min-h-0 bg-slate-800/50 rounded-xl border border-slate-700 p-6 space-y-6"
             >
               <div class="flex-1 overflow-hidden">
-                <FileList :files="uploadedFiles" />
+                <FileList :files="uploadedFiles" @remove="handleRemoveFile" />
               </div>
 
               <div class="pt-4 border-t border-slate-700 space-y-4">
@@ -119,6 +119,10 @@ const handleFilesSelected = (fileList: FileList) => {
   uploadedFiles.value = [...uploadedFiles.value, ...newFiles];
 };
 
+const handleRemoveFile = (index: number) => {
+  uploadedFiles.value.splice(index, 1);
+};
+
 const handleClear = () => {
   uploadedFiles.value = [];
   progress.value = 0;
@@ -143,7 +147,12 @@ const handleProcess = async () => {
 
     try {
       // Upload to Firebase
-      const metadata = await uploadFileToFirebase(uploadedFiles.value[i].file);
+      const metadata = await uploadFileToFirebase(
+        uploadedFiles.value[i].file,
+        (progress) => {
+          uploadedFiles.value[i].progress = progress;
+        }
+      );
       uploadedFiles.value[i].metadata = metadata;
       uploadedFiles.value[i].status = UploadStatus.SUCCESS;
     } catch (error) {

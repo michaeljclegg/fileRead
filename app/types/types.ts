@@ -33,4 +33,5 @@ export interface FileUploadState {
     status: UploadStatus;
     metadata: FileMetadata;
     error?: string;
+    progress?: number;
 }
