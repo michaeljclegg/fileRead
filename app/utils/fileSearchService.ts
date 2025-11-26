@@ -84,7 +84,7 @@ export const uploadFileToFirebase = async (
     });
 };
 
-// add this function - start!
+
 export const fetchFilesFromFirestore = async (): Promise<FileUploadState[]> => {
     const { $db } = useNuxtApp();
     const db = $db as any;
@@ -120,7 +120,6 @@ export const fetchFilesFromFirestore = async (): Promise<FileUploadState[]> => {
     }
 };
 
-// add this function - end
 
 export const queryFileSearchStore = async (
     query: string,

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center justify-center border-2 border-dashed border-slate-600 rounded-xl text-center transition-all duration-300 hover:border-sky-500 hover:bg-slate-800/60"
+    class="flex items-center justify-center border-2 borde-solid border-slate-600 rounded-xl text-center transition-all duration-300 hover:border-sky-500 hover:bg-slate-800/60"
     :class="[
       compact ? 'flex-row p-4 gap-4 justify-between' : 'flex-col p-8 sm:p-12',
     ]"
@@ -13,7 +13,7 @@
 
       <div class="text-left" v-if="compact">
         <h2 class="text-lg font-semibold text-slate-200">
-          Current Folder Selected
+          {{ folderName || "Current Folder Selected" }}
         </h2>
         <p class="text-sm text-slate-400">
           Click change to select a different folder
@@ -22,10 +22,10 @@
 
       <template v-else>
         <div class="flex flex-col items-center">
-          <h2 class="text-xl font-semibold text-slate-200 mb-2">
+          <h2 class="text-2xl font-semibold text-slate-200 mb-2">
             Start by selecting a folder
           </h2>
-          <p class="text-slate-400 mb-6 max-w-sm">
+          <p class="text-slate-400 mb-6 max-w-sm text-[14px]">
             Click the button below to choose a folder from your device. All
             files within it will be listed and prepared for processing.
           </p>
@@ -45,7 +45,7 @@
 
     <button
       @click="handleClick"
-      class="bg-red-600 text-white font-bold rounded-lg shadow-lg shadow-red-900/50 hover:bg-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/50 transform hover:scale-105 transition-all duration-300"
+      class="bg-slate-600 text-gray-400 hover:text-whited font-bold rounded-lg shadow-lg shadow-gray-600/50 hover:text-black focus:outline-none hover:scale-102 transition-all duration-300"
       :class="[compact ? 'py-2 px-4 text-sm whitespace-nowrap' : 'py-3 px-8']"
     >
       {{ compact ? "Change Folder" : "Select Folder" }}
@@ -59,6 +59,7 @@ import FolderIcon from "./icons/FolderIcon.vue";
 
 const props = defineProps<{
   compact?: boolean;
+  folderName?: string;
 }>();
 
 const emit = defineEmits<{

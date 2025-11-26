@@ -33,7 +33,9 @@
             Index Files AI
           </div>
         </div>
-        <div class="text-2xl font-bold text-slate-600">version 1.02</div>
+        <div class="text-[14px] font-bold text-slate-600 mr-4">
+          version 1.03
+        </div>
       </header>
 
       <!-- Main Content -->
@@ -45,10 +47,68 @@
             class="flex flex-col h-full space-y-6"
             key="upload"
           >
-            <FolderSelect
-              @filesSelected="handleFilesSelected"
-              :compact="uploadedFiles.length > 0"
-            />
+            <div class="space-y-4">
+              <FolderSelect
+                @filesSelected="handleFilesSelected"
+                :compact="uploadedFiles.length > 0"
+                :folderName="selectedFolderName"
+              />
+
+              <!-- Load from Firestore Button -->
+              <div class="flex items-center gap-4">
+                <div class="flex-1 border-t border-slate-700"></div>
+                <span class="text-slate-500 text-sm">OR</span>
+                <div class="flex-1 border-t border-slate-700"></div>
+              </div>
+
+              <button
+                @click="handleLoadFromFirestore"
+                :disabled="isLoadingFromFirestore"
+                class="w-full px-6 py-3 bg-gradient-to-r from-slate-600 to-indigo-600 hover:from-gray-700 hover:to-gray-500 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <svg
+                  v-if="!isLoadingFromFirestore"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                  />
+                </svg>
+                <svg
+                  v-else
+                  class="animate-spin h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span>{{
+                  isLoadingFromFirestore
+                    ? "Loading from Firestore..."
+                    : "Load from Firestore"
+                }}</span>
+              </button>
+            </div>
 
             <div
               v-if="uploadedFiles.length > 0"
@@ -103,18 +163,28 @@ const view = ref<"upload" | "chat">("upload");
 const uploadedFiles = ref<FileUploadState[]>([]);
 const isProcessing = ref(false);
 const progress = ref(0);
+const isLoadingFromFirestore = ref(false);
+const selectedFolderName = ref<string>("");
 
 const processedCount = computed(
   () =>
     uploadedFiles.value.filter((f) => f.status === UploadStatus.SUCCESS).length
 );
 
-onMounted(async () => {
-  const files = await fetchFilesFromFirestore();
-  uploadedFiles.value = files;
-});
+// Removed auto-load from onMounted - files are now loaded manually via button
 
 const handleFilesSelected = (fileList: FileList) => {
+  // Extract folder name from the first file's path
+  if (fileList.length > 0) {
+    const firstFile = fileList[0];
+    if (firstFile) {
+      const path = firstFile.webkitRelativePath || firstFile.name;
+      // Get the folder name (first part of the path)
+      const folderName = path.split("/")[0];
+      selectedFolderName.value = folderName || "";
+    }
+  }
+
   const newFiles: FileUploadState[] = Array.from(fileList).map((file) => ({
     file,
     status: UploadStatus.PENDING,
@@ -126,6 +196,23 @@ const handleFilesSelected = (fileList: FileList) => {
     },
   }));
   uploadedFiles.value = [...uploadedFiles.value, ...newFiles];
+};
+
+const handleLoadFromFirestore = async () => {
+  isLoadingFromFirestore.value = true;
+  try {
+    const files = await fetchFilesFromFirestore();
+    // Add files from Firestore to the existing list, avoiding duplicates
+    const existingIds = new Set(
+      uploadedFiles.value.map((f) => f.metadata.id).filter(Boolean)
+    );
+    const newFiles = files.filter((f) => !existingIds.has(f.metadata.id));
+    uploadedFiles.value = [...uploadedFiles.value, ...newFiles];
+  } catch (error) {
+    console.error("Error loading files from Firestore:", error);
+  } finally {
+    isLoadingFromFirestore.value = false;
+  }
 };
 
 const handleRemoveFile = (index: number) => {
