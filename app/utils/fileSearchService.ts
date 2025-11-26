@@ -4,7 +4,43 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebas
 import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 
 // Helper to convert File to a generative part.
-const fileToGenerativePart = (file: File) => {
+const fileToGenerativePart = async (file: File) => {
+    const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    return {
+        inlineData: {
+            data: base64Data,
+            mimeType: file.type
+        }
+    };
+};
+
+// Helper to fetch file from Firebase Storage URL and convert to generative part
+const fetchFileFromUrl = async (url: string, mimeType: string) => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+        };
+        reader.readAsDataURL(blob);
+    });
+
+    return {
+        inlineData: {
+            data: base64Data,
+            mimeType: mimeType
+        }
+    };
 };
 
 export const uploadFileToFirebase = async (
@@ -134,19 +170,33 @@ export const queryFileSearchStore = async (
     }
     const ai = new GoogleGenAI({ apiKey });
 
-    const filesToProcess = uploadedFiles.filter(f => f.status === UploadStatus.SUCCESS && f.file);
+    // Process both local files and Firestore files
+    const filesToProcess = uploadedFiles.filter(f => f.status === UploadStatus.SUCCESS);
     if (filesToProcess.length === 0) {
         onChunk("It seems there are no processed files to query. Please upload and process files first.");
         return;
     }
 
     try {
+        // Convert files to generative parts - handle both local and Firestore files
         const fileParts = await Promise.all(
-            filesToProcess.map(f => fileToGenerativePart(f.file))
+            filesToProcess.map(async (f) => {
+                if (f.file) {
+                    // Local file - use the File object
+                    return await fileToGenerativePart(f.file);
+                } else if (f.metadata.downloadUrl) {
+                    // Firestore file - fetch from storage URL
+                    return await fetchFileFromUrl(f.metadata.downloadUrl, f.metadata.type || 'application/octet-stream');
+                }
+                return null;
+            })
         );
 
+        // Filter out any null values
+        const validFileParts = fileParts.filter(part => part !== null);
+
         const promptParts = [
-            ...fileParts,
+            ...validFileParts,
             {
                 text: `CONTEXT:
 You are a helpful assistant that answers questions based ONLY on the content of the files provided above.
